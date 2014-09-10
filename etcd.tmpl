@@ -1,9 +1,10 @@
-
 #!/usr/bin/python
 
 import etcd
 import sys
-from urlparse import urlparse
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 etcd_host = "{{ .Env.ETCD_HOST }}"
 if not etcd_host:
@@ -16,26 +17,45 @@ host = etcd_host
 if ":" in etcd_host:
     host, port = etcd_host.split(":")
 
+logging.debug('Etcd host: %s', host)
+
 client = etcd.Client(host=host, port=int(port))
 
+key_prefix = "{{ .Env.KEY_PREFIX }}"
+if key_prefix is "<no value>":
+    key_prefix = "/server"
+
+logging.debug('Key prefix: %s', key_prefix)
+
 try:
-    backends = client.read("/backends")
+    client.write(key_prefix, None, dir=True)
 except KeyError:
-    client.write("/backends", None, dir=True)
+    pass
 
 {{ $local := . }}
-{{range $key, $value := .}}
-{{ $addrLen := len $value.Addresses }}
-{{ if eq $addrLen 1 }}
+
+{{ range $host, $containers := groupByMulti $ "Env.DOMAIN_NAME" "," }}
+
+{{ range $index, $value := $containers }}
+
+{{ $up := $value.Name }}
+
 {{ with $address := index $value.Addresses 0 }}
-
-{{ if $address.HostPort}}
-# {{ $value.Name }}
-
-client.write("/backends/{{ $value.Image.Repository}}/{{printf "%.*s" 12 $value.ID}}", "{{ $local.Env.HOST_IP }}:{{ $address.HostPort }}", ttl=15)
-client.write("/backends/{{ $value.Image.Repository}}/port", "{{ $address.Port }}", ttl=15)
+try :
+{{ if $address.HostPort }}
+    client.write(key_prefix + "/upstreams/{{$up}}/endpoints/{{printf "%.*s" 12 $value.ID}}", "http://{{ $local.Env.HOST_IP }}:{{ $address.HostPort }}", ttl=15)
+{{ else }}
+    client.write(key_prefix + "/upstreams/{{$up}}/endpoints/{{printf "%.*s" 12 $value.ID}}", "http://{{ $address.IP }}:{{ $address.Port }}", ttl=15)
+{{ end }}
+    client.write(key_prefix + "/hosts/{{$host}}/locations/root/path", "/", ttl=15)
+    client.write(key_prefix + "/hosts/{{$host}}/locations/root/upstream", "{{$up}}", ttl=15)
+except KeyError, e:
+    logging.exception(e)
+    pass
 
 {{ end }}
+
 {{ end }}
-{{end}}
-{{end}}
+
+{{ end }}
+

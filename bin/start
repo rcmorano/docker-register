@@ -1,0 +1,11 @@
+#!/bin/bash
+
+docker run \
+    --name docker-registar \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -d \
+    -e HOST_IP=172.17.42.1 \
+    -e ETCD_HOST=172.17.42.1:4001 \
+    -e KEY_PREFIX=/vulcand \
+    ncarlier/docker-register
+

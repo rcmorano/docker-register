@@ -1,45 +1,38 @@
-docker-register sets up a container running [docker-gen][1].  docker-gen dynamically generate a
+This is fork from jwilder/docker-register but modified to working with [Vulcan][vulcan].
+
+docker-register sets up a container running [docker-gen][docker-gen].  docker-gen dynamically generate a
 python script when containers are started and stopped.  This generated script registers the running
-containers host IP and port in etcd with a TTL.  It works in tandem with docker-discover which
-generates haproxy routes on the host to forward requests to registered containers.
-
-Together, they implement [service discovery][2] for docker containers with a similar architecture
-to [SmartStack][3]. docker-register is analagous to [nerve][4] in the SmartStack system.
-
-See also [Docker Service Discovery Using Etcd and Haproxy][5]
+containers host IP and port in etcd with a TTL.  It works in tandem with [vulcand][vulacn] which
+is a dynamic and easilly expandable HTTP reverse proxy.
 
 ### Usage
 
-To run it:
+First, you should have an etcd server. If not, you can launch an etcd server like this:
 
-    $ docker run -d -e HOST_IP=1.2.3.4 -e ETCD_HOST=1.2.3.4:4001 -v /var/run/docker.sock:/var/run/docker.sock -t jwilder/docker-register
+    $ docker run --name etcd -p 4001:4001 -p 7001:7001 -d coreos/etcd
 
-Then start any containers you want to be discoverable and publish their exposed port to the host.
+Then you can launch the docker registration container:
 
-    $ docker run -d -P -t ...
+    $ docker run -d \
+      --name docker-registar \
+      -e HOST_IP=172.17.42.1 \
+      -e ETCD_HOST=172.17.42.1:4001 \
+      -e KEY_PREFIX=/vulcand \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      ncarlier/docker-register
 
-If you run the container on multiple hosts, they will be grouped together automatically.
+**HOST_IP** should refer the public IP of the docker host.
 
-### Limitations
+**ETCD_HOST** sould refer the public IP and PORT of etcd host.
 
-There are a few simplications that were made:
+**KEY_PREFIX** is the prefix used inside etcd. If you want to use vulcan you have to setup "/vulcand".
 
-* *Containers can only expose one port* - This is a simplification but if the container `EXPOSE`s
-multiple ports, it won't be registered in etcd.
-* *Exposed ports must be unique to the service* - Each container must expose it's service on a unique
-port.  For example, if you have two different backend web services and they both expose their service
-over port 80, then one will need to use a port 80 and the other a different port.
+Then start any containers you want to be discoverable by adding the DOMAIN_NAME variable.
 
+    $ docker run -d -P -e DOMAIN_NAME=foo.bar.com ...
 
-[1]: https://github.com/jwilder/docker-gen
-[2]: http://jasonwilder.com/blog/2014/02/04/service-discovery-in-the-cloud/
-[3]: http://nerds.airbnb.com/smartstack-service-discovery-cloud/
-[4]: https://github.com/airbnb/nerve
-[5]: http://jasonwilder.com/blog/2014/07/15/docker-service-discovery/
+If you want to use this discovery tool inside a cluster like CoreOS you have to
+use '-P' to expose the container port on the public IP of the CorOS node.
 
-### TODO
-
-* Support http, udp proxying
-* Support multiple ports
-* Make ETCD prefix configurable
-* Support other backends (consul, zookeeper, redis, etc.)
+If you run the container on multiple hosts, they will be grouped together automatically by Vuclan.
+Don't forget to use the parameter "-P" to expose ports on the host interface.

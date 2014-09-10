@@ -1,0 +1,14 @@
+[Unit]
+Description=Docker Registration Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Environment="COREOS_PUBLIC_IPV4=10.0.0.10"
+ExecStartPre=-/usr/bin/docker kill docker-registar
+ExecStartPre=-/usr/bin/docker rm docker-registar
+ExecStart=/usr/bin/docker run --rm --name docker-registar -v /var/run/docker.sock:/var/run/docker.sock -e HOST_IP=$COREOS_PUBLIC_IPV4 -e ETCD_HOST=$COREOS_PUBLIC_IPV4:4001 -e KEY_PREFIX=/vulcand ncarlier/docker-register
+ExecStop=/usr/bin/docker stop docker-registar
+
+[X-Fleet]
+X-Conflicts=docker-registar@*.service

@@ -1,14 +1,24 @@
-FROM ubuntu:14.04
-MAINTAINER Jason Wilder jwilder@litl.com
+# Docker Register image.
+#
+# VERSION 0.0.1
+#
+# BUILD-USING: docker build -rm -t ncarlier/docker-register .
 
-RUN apt-get update
-RUN apt-get install -y wget python python-pip python-dev libssl-dev
+FROM debian:jessie
+
+MAINTAINER Nicolas Carlier <https://github.com/ncarlier>
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && apt-get upgrade -y
+
+RUN apt-get install -y curl python python-pip python-dev libssl-dev libffi-dev
 
 RUN mkdir /app
 WORKDIR /app
 
-RUN wget https://github.com/jwilder/docker-gen/releases/download/0.3.3/docker-gen-linux-amd64-0.3.3.tar.gz
-RUN tar xvzf docker-gen-linux-amd64-0.3.3.tar.gz -C /usr/local/bin
+ENV DOCKERGEN_URL https://github.com/jwilder/docker-gen/releases/download/0.3.3/docker-gen-linux-amd64-0.3.3.tar.gz
+RUN (cd /tmp && curl -L -o docker-gen.tgz $DOCKERGEN_URL && tar -C /usr/local/bin -xvzf docker-gen.tgz)
 
 RUN pip install python-etcd
 
