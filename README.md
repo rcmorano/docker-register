@@ -37,7 +37,7 @@ is a dynamic and easilly expandable HTTP reverse proxy.
 
         $ docker run -d -P -e DOMAIN_NAME=foo.bar.com ...
 
-    If you run the container on multiple hosts, they will be grouped together automatically by Vuclan.
+    If you run the container on multiple hosts, they will be grouped together automatically by Vulcan.
     Don't forget to use the parameter "-P" to expose ports on the host interface.
 
 [vulcan]: http://www.vulcanproxy.com
